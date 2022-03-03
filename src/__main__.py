@@ -11,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     # run optimization
-    schedule = training()
+    schedule, c_DAILY_SHIFT = training()
     # plot and save png table
-    plot_table(schedule, c_DAILY_SHIFT, fileDir = "/Users/jeanmichelcheumeni/RO-Optimization/data/", figSize = (10, 4), saveFig = True)
+
+    plot_table(schedule, c_DAILY_SHIFT, fileDir = str(dirs.data_dir) + "/", figSize = (10, 4), saveFig = True)
     # save .csv table
     save_schedule_tab(schedule)
 

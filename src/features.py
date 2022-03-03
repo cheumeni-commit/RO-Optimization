@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import pandas as pd
 import matplotlib.pyplot as plt
 from pandas.plotting import table
 
@@ -11,20 +12,38 @@ from src.constants import *
 
 
 def need_worker_per_day():
-    manage = read_setting(c_MANAGE)
+    manage = delete_unuse_column()
     return list(manage.need)
 
 
 def available_worker():
-    shift = read_setting(c_SHIFT) 
+    data = delete_unuse_column()
     # invert 0 and 1 in shift
-    shift_rev = shift[shift.columns].apply(lambda r: 1-r[shift.columns],1)
+    data = data.iloc[:, 2:len(data.columns)-1]
+    shift_rev = data[data.columns].apply(lambda r: 1-r[data.columns],1)
     return shift_rev
+
+
+def delete_unuse_column():
+    
+    shift = read_setting(c_SHIFT)
+    data = pd.DataFrame(shift)
+
+    if data.columns is not None:
+        for col in data.columns:
+            if "Unnamed:" in str(col):
+                data.drop(col, axis=1, inplace=True)
+    else:
+        print("Not column in imput data setting")
+        
+    data['dates'] = data.index
+
+    return data
 
 
 def pair_avoid(var):
     member = read_setting(c_MEMBER).T
-    avoid_list = member[member[var].isin([1])].index # var :'pairs1'
+    avoid_list = member[member[var].isin([1])].index
     return avoid_list
 
 

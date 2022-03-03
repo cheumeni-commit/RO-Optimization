@@ -1,3 +1,6 @@
+from datetime import datetime as dt
+from pickle import TRUE
+from dateutil.parser import parse
 import pandas as pd
 
 from pulp import *
@@ -6,44 +9,49 @@ from src.constants import *
 from src.features import need_worker_per_day
 from src.features import available_worker
 from src.features import indice_binaire
-from src.features import pair_avoid
+from src.features import pair_avoid, delete_unuse_column
 
 
-class nurse:
+class Worker:
 
     """
     workforce class for the scheduling problem
     """
-    def __init__(self, daily_shift = 2, planning_length = 4,
-                 total_nurses = None):
-
-        # number of worker
-        self.total_nurses = total_nurses
-
-        # need worker per day
-        self.nurse_per_shift = need_worker_per_day()
-
-         # planning_length: 1 week, 2 week or 4 weeks
-        self.numberWeek = len(self.nurse_per_shift) // planning_length
+    def __init__(self):
 
         # available worker
         self.available_worker = available_worker()
+        # input data : setting
+        self.input_data = delete_unuse_column()
+
+         # need worker per day
+        self.nurse_per_shift = need_worker_per_day()
+
+        # number of worker
+        self.total_nurses = len(self.available_worker.columns)
+
+         # planning_length: 1 week, 2 week or 4 weeks
+        self.working_date = [d.month_name() + '_' + d.day_name() + '_' + d.isoformat() for d in list(self.input_data.dates)]
 
         # numbers of shift per day
-        # for example: 
-        # [day, night] = [0, 1]
+        daily_shift = max(self.input_data['shift'])+1
         self.daily_shift = range(daily_shift)
         self.daily_shift_n = daily_shift
-
-        # label each day from Monday to Friday:
-        self.shift_name = [c_Week +str(w)+'_'+str(d)+'_'+str(i) \
-                            for w in range(1, self.numberWeek) \
-                            for d in c_WEEK for i in self.daily_shift]
-
         
-        self.shifts = range((daily_shift * len(c_WEEK)* planning_length))
+        # label each day from Monday to Friday:
+        day_of_month = [v for i, v in zip(range(len(self.working_date )), self.working_date) if i%daily_shift==0]
+        self.shift_name = [w + '_' + c_SHIFT + '_' + str(d) \
+                            for w in day_of_month \
+                            for d in self.daily_shift]
+
+        #print(list(self.shift_name))
+        dg = False
+        if dg == True:
+            sys.exit()
+        self.shifts = range(len(self.working_date))
+
         # number of worker per shift
-        self.worker_per_shift = [p//daily_shift for p in self.nurse_per_shift for _ in range(daily_shift)]
+        self.worker_per_shift = self.nurse_per_shift
 
         # create workforce list and workforce_id tag:
         # workforce: label each workforce. Simply use integers to represent.
@@ -52,7 +60,9 @@ class nurse:
 
         # rename column of dataset of available
         self.dictionary = {k:v for k,v in zip(self.available_worker.columns, self.nurses_id)}
-        print(self.dictionary)
+
+        #print(self.dictionary)
+        print(len(self.available_worker.columns), len(self.nurses_id))
         self.available_worker.columns = self.nurses_id
 
         self.off_shift_worker = {k:indice_binaire(self.available_worker[k]) \
@@ -76,29 +86,47 @@ class nurse:
         self.var = {(n, s): LpVariable("schedule_{}_{}".format(n, s), cat = "Binary") \
             for n in self.nurses for s in self.shifts}
 
+        print(self.var)
+
         print(len(self.shifts), len(self.worker_per_shift))
         # add constraints: 
         for n in self.nurses:
             for s in self.shifts:
-                if s%self.daily_shift_n == 0 and s < self.shifts[-4]:
+                if s%self.daily_shift_n == 0 and s < self.shifts[-c_2]:
                     # worker do not work in two consecutive shifts in a single day
                     self.prob.addConstraint(
                     sum(self.var[(n,s+i)] for i in self.daily_shift) <= 1  # for day shift
                     )
                     # worker do not work in 3 consecutive shifts night
                     self.prob.addConstraint(
-                    sum(self.var[(n, s+self.daily_shift_n*i)] for i in range(3)) <= 1  # for day shift
+                    sum(self.var[(n, s+i)] for i in range(c_1)) <= 1  # for day shift
                     )
                 
-                elif (s+1)%self.daily_shift_n == 0 and s < self.shifts[-5]:  # for late night shift
+                elif (s+1)%self.daily_shift_n == 0 and (s+1) < self.shifts[-c_3]:  # for late night shift
                     # worker do not work in 4 consecutive shifts night
                     self.prob.addConstraint(
-                    sum(self.var[(n, s+self.daily_shift_n*i)] for i in range(4)) <= 1  # for night shift
+                    sum(self.var[(n, s+i)] for i in range(c_2)) <= 1  # for night shift
                     )
                     # night shift. Do not forget to add condition that the last
                     # shift in the scheduling does not count.
                     self.prob.addConstraint(
                     sum(self.var[(n, s+i)] for i in range(self.daily_shift_n+1)) <= 1
+                    )
+        # long blank 3 jours
+        for n in self.nurses:
+            for s in self.shifts:
+                if s < self.shifts[-6]:
+                    self.prob.addConstraint(
+                    sum(self.var[(n,s+i)] for i in range(c_4)) <= 6  # for day shift
+                    )
+
+        for n in self.nurses:
+            for s in self.shifts:
+                self.prob.addConstraint(
+                    self.var[(n, s)] >= 0
+                    )
+                self.prob.addConstraint(
+                    self.var[(n, s)] <= 1
                     )
 
         # add constraints
@@ -130,7 +158,7 @@ class nurse:
 
         for s in self.shifts:
             self.prob.addConstraint(
-            sum(self.var[(n, s)] for n in senior) <= 2  
+            sum(self.var[(n, s)] for n in senior) <= 1 
             )
   
         # add constraints
