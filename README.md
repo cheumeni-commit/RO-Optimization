@@ -7,13 +7,13 @@
 
 ## General constraints and assumptions:
 
-* Each day is divided into multiple shifts(usually 1-2).
+* Each day is divided into multiple shifts(usually 1-2 or 3).
 
 * There are a number of required worker for each of the shift. 
 
 * A worker is off on a specific day if no shift is assigned 
 
-* The planning length is flexible (1-4 weeks, or more). 
+* The planning length is flexible (1-8 weeks, or more). 
     
 * worker will only work at most one shift per day.
 
@@ -25,11 +25,12 @@
 
 * Avoid shift without at least one skilled member
 
-* Avoid long blank
+* Avoid long blank if it necessary, not always necessary
 
 * Avoid pairs of concerns
 
-* preserve weekend off duty at least one per months for each member
+* preserve weekend off duty at least one per months for each member (not easy to have, because this contraint don't have sense with others contraints)
+* work shift difference from average in the same work shift amount group (not easy to have)
 
 ## Model:
 
@@ -56,7 +57,7 @@
 
 # ChangeLog
 ```
-- V.1.0.0 : Release intiale
+- V.1.0.1 : Release intiale
 ```
 
 # Installations
@@ -77,7 +78,7 @@ python3 -m src
 
 ![Alt text](/data/worker_scheduling.png?raw=true "Optional Title")
 
-* Horizontal: work shifts from week1 Monday to week4 Friday.
+* Horizontal: work shifts from week_1 begin day to week_end last day.
 * Vertical: Worker_id
 * orange: late night shift
 * pink:  worker is working on that shift
@@ -91,7 +92,7 @@ contain output figs of the scheduling
 
 ## utils
 1. output the scheduling into csv
-2. re
+2. requirements.txt
 
 # Arborescence du projet
 

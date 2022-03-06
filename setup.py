@@ -8,7 +8,7 @@ with open("./requirements.txt") as fp:
 
 setup(
     name="RO-Optimization",
-    version="0.1",
+    version="0.2",
     description="Operationnal research",
     long_description=long_description,
     author="cheumeni",

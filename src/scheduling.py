@@ -26,7 +26,10 @@ class Worker:
 
          # need worker per day
         self.nurse_per_shift = need_worker_per_day()
-
+        print(sum(self.nurse_per_shift))
+        dg = False
+        if dg == True:
+            sys.exit()
         # number of worker
         self.total_nurses = len(self.available_worker.columns)
 
@@ -38,16 +41,13 @@ class Worker:
         self.daily_shift = range(daily_shift)
         self.daily_shift_n = daily_shift
         
-        # label each day from Monday to Friday:
+        # label each day between Monday to Sunday:
         day_of_month = [v for i, v in zip(range(len(self.working_date )), self.working_date) if i%daily_shift==0]
         self.shift_name = [w + '_' + c_SHIFT + '_' + str(d) \
                             for w in day_of_month \
                             for d in self.daily_shift]
 
-        #print(list(self.shift_name))
-        dg = False
-        if dg == True:
-            sys.exit()
+        
         self.shifts = range(len(self.working_date))
 
         # number of worker per shift
@@ -82,13 +82,27 @@ class Worker:
         2. Add constraints in either equality or inequality conditions.
         3. Building objective using LpObjective. 
         '''
+
+        print(len(self.shifts), len(self.worker_per_shift))
+        
+        if len(self.shifts) != len(self.worker_per_shift):
+            print("The input file is not correct. Modified that and re-run")
+            sys.exit()
+
         # Creating the variables. 
         self.var = {(n, s): LpVariable("schedule_{}_{}".format(n, s), cat = "Binary") \
             for n in self.nurses for s in self.shifts}
 
-        print(self.var)
+        # the variables should be positive, less or equal to 1
+        for n in self.nurses:
+            for s in self.shifts:
+                self.prob.addConstraint(
+                    self.var[(n, s)] >= 0
+                    )
+                self.prob.addConstraint(
+                    self.var[(n, s)] <= 1
+                    )
 
-        print(len(self.shifts), len(self.worker_per_shift))
         # add constraints: 
         for n in self.nurses:
             for s in self.shifts:
@@ -112,21 +126,13 @@ class Worker:
                     self.prob.addConstraint(
                     sum(self.var[(n, s+i)] for i in range(self.daily_shift_n+1)) <= 1
                     )
-        # long blank 3 jours
-        for n in self.nurses:
-            for s in self.shifts:
-                if s < self.shifts[-6]:
-                    self.prob.addConstraint(
-                    sum(self.var[(n,s+i)] for i in range(c_4)) <= 6  # for day shift
-                    )
 
+        # long blank max 3 jours
         for n in self.nurses:
             for s in self.shifts:
-                self.prob.addConstraint(
-                    self.var[(n, s)] >= 0
-                    )
-                self.prob.addConstraint(
-                    self.var[(n, s)] <= 1
+                if s < self.shifts[-c_4]:
+                    self.prob.addConstraint(
+                    sum(self.var[(n,s+i)] for i in range(c_4)) <= c_4  # for max = 6 day shift
                     )
 
         # add constraints
@@ -137,12 +143,13 @@ class Worker:
                     self.prob.addConstraint(
                     self.var[(n, s)] == 0
                     )
+
         # add constraints
-        # pair to avoid
+        # pair of worker to avoid
         pair_1, pair_2 = pair_avoid(c_PAIR_1), pair_avoid(c_PAIR_2)
         worker1 = [self.association_workforce_index.get(self.dictionary.get(i)) for i in pair_1]
         worker2 = [self.association_workforce_index.get(self.dictionary.get(i)) for i in pair_2]
-
+       
         for s in self.shifts:
             self.prob.addConstraint(
             sum(self.var[(n, s)] for n in worker1) <= 1  
@@ -162,7 +169,7 @@ class Worker:
             )
   
         # add constraints
-        # for each shift, the numbers of working worker should be greater than
+        # for each shift, the numbers of worker should be greater than
         # the required numbers of worker
         print(len(self.shifts), len(self.worker_per_shift))
         for s in self.shifts:
